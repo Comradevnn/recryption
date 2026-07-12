@@ -125,6 +125,8 @@ Badge {
 }
 ```
 
+**Signed-badge archive (resolved during implementation).** The record above deliberately retains no claims — but §1.4's `reissue_all` must construct a *same-claims* replacement payload, and claims live only in the signed payload. The badge store therefore also archives the full signed badge alongside the status record: `saveSigned(badge)` written at issuance, `getSigned(badge_id)` read at reissue. This is not a new retention category: the archived payload is exactly the minimized artifact the badge already is — outcome claims and the same `claims_digest` already covered by the zero-retention analysis elsewhere in this spec, never raw source fields, never the document number (§1.2's minimization rule). It's the same data the subject carries and presents to every verifier, held server-side so re-issuance doesn't depend on the subject re-presenting it.
+
 #### 1.4 Verification lookup logic
 
 `verify(badge, opts) → { ok, reason? }`, executed in this order (cheapest and most-final checks first):
@@ -149,7 +151,7 @@ Badge {
 
 Steps 5–6 are the pull-based half: signature validity alone is never a pass.
 
-Bulk re-issuance helper (the D3 remediation for key compromise): `reissue_all(key_id)` iterates `Badge WHERE key_id = ? AND status = "valid"`, and for each one whose §3 claims digest still matches, constructs a fresh payload (new `badge_id`, current active `key_id`, new `issued_at`, same `subject_id`/`claims`/`claims_digest`), signs it, writes the new record, and marks the old badge `revoked` with reason `"key_compromise"`.
+Bulk re-issuance helper (the D3 remediation for key compromise): `reissue_all(key_id)` iterates `Badge WHERE key_id = ? AND status = "valid"`, and for each one whose §3 claims digest still matches, constructs a fresh payload (new `badge_id`, current active `key_id`, new `issued_at`, same `subject_id`/`claims`/`claims_digest` — the claims read from the signed-badge archive (§1.3), since the Badge record doesn't retain them), signs it, writes the new record, and marks the old badge `revoked` with reason `"key_compromise"`. A badge whose archived payload is missing is skipped and reported, not silently dropped.
 
 #### 1.5 Health check
 
@@ -179,7 +181,9 @@ DocumentHash {
 }
 ```
 
-Normalized document identity (so the same physical document always produces the same HMAC): `document_type || ":" || issuing_country || ":" || uppercase(strip_non_alphanumeric(document_number))`. Including type and country prevents cross-type collisions (a passport number coinciding with a license number) from producing false duplicates.
+Normalized document identity (so the same physical document always produces the same HMAC): `lowercase(trim(document_type)) || ":" || lowercase(trim(issuing_country)) || ":" || uppercase(strip_non_alphanumeric(document_number))`. Including type and country prevents cross-type collisions (a passport number coinciding with a license number) from producing false duplicates. `document_type` and `issuing_country` must not themselves contain `":"`, since it delimits the three preimage segments.
+
+`document_type` and `issuing_country` are case- and whitespace-normalized, not just the document number — an earlier version of this formula case-normalized only `document_number`, which meant `"US"` vs `"us"` silently split one physical document into two identities, contradicting this section's own stated goal that the same document always produce the same HMAC.
 
 #### 2.3 Check-and-record
 

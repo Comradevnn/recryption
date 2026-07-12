@@ -118,13 +118,12 @@ export function validatePepperConfig(config: PepperConfig): void {
 
 /**
  * Spec §2.2 normalized document identity:
- * document_type ":" issuing_country ":" uppercase(strip_non_alphanumeric(document_number)).
+ * lowercase(trim(document_type)) ":" lowercase(trim(issuing_country)) ":"
+ * uppercase(strip_non_alphanumeric(document_number)).
  *
- * Type and country are case-folded (trim + lowercase) beyond the spec's literal
- * formula so that "US" vs "us" can't split one physical document into two
- * identities — serving §2.2's stated goal that the same document always produces
- * the same HMAC. ":" is rejected inside type/country because it delimits the
- * three segments of the preimage.
+ * Type and country are case-folded so "US" vs "us" can't split one physical
+ * document into two identities; ":" is rejected inside them because it delimits
+ * the three segments of the preimage.
  */
 export function normalizeDocumentIdentity(fields: DocumentFields): string {
   const type = fields.document_type.trim().toLowerCase();
