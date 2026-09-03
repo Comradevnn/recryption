@@ -62,6 +62,6 @@ await badges.verify(badge); // { ok: false, reason: "key_revoked" }
 await badges.reissueAll(key.key_id, nextSigner);
 ```
 
-## What this does NOT do
+## What this does NOT do (yet)
 Manual-entry verification only — no ML document authenticity checks, no OCR, no liveness
 detection. See threat model in `spec/` for exactly what this protects against.
